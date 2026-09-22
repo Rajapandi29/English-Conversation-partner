@@ -1,0 +1,6 @@
+{
+  "name": "TalkCraft - Real-Time English AI Tutor",
+  "description": "Real-time conversational English practice partner with live speech recognition, female voice replies, instant grammar & sentence framing feedback, and downloadable Next.js + FastAPI + PostgreSQL production codebase.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

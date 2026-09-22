@@ -1,0 +1,87 @@
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: talkcraft_db
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: talkcraft_user
+      POSTGRES_PASSWORD: talkcraft_password
+      POSTGRES_DB: talkcraft_db
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U talkcraft_user -d talkcraft_db
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+    networks:
+      - talkcraft_net
+
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+
+    container_name: talkcraft_backend
+    restart: unless-stopped
+
+    ports:
+      - "8000:8000"
+
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://talkcraft_user:talkcraft_password@postgres:5432/talkcraft_db"
+      GEMINI_API_KEY: "${GEMINI_API_KEY}"
+      CORS_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    networks:
+      - talkcraft_net
+
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: talk-ai/frontend/Dockerfile
+
+    container_name: talkcraft_frontend
+    restart: unless-stopped
+
+    ports:
+      - "3000:3000"
+
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: "0.0.0.0"
+      NEXT_PUBLIC_API_URL: "http://localhost:8000"
+
+    depends_on:
+      - backend
+
+    networks:
+      - talkcraft_net
+
+
+volumes:
+  postgres_data:
+    driver: local
+
+
+networks:
+  talkcraft_net:
+    driver: bridge
