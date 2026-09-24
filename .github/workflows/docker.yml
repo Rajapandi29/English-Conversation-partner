@@ -1,4 +1,4 @@
-```yaml
+
 name: Docker Build and Deploy
 
 on:
@@ -150,4 +150,4 @@ jobs:
           echo "ECS cluster     : ${{ env.ECS_CLUSTER }}"
           echo "Deployment      : SUCCESS"
           echo "=========================================="
-```
+
