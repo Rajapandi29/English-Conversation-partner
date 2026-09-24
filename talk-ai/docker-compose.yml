@@ -69,6 +69,7 @@ services:
       PORT: 3000
       HOSTNAME: "0.0.0.0"
       NEXT_PUBLIC_API_URL: "http://localhost:8000"
+      GEMINI_API_KEY: "${GEMINI_API_KEY}"
 
     depends_on:
       - backend

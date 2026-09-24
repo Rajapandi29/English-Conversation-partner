@@ -3,7 +3,10 @@ from google.genai import types
 import os
 import json
 
+
+
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
 
 def get_ai_client():
     if not GEMINI_API_KEY:
