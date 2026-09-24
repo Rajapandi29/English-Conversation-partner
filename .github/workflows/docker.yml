@@ -1,14 +1,12 @@
+```yaml
 name: Docker Build and Deploy
 
 on:
-  push:
-    branches:
-      - main
-
-  workflow_dispatch:
-
-permissions:
-  contents: read
+  workflow_run:
+    workflows:
+      - "Terraform Apply"
+    types:
+      - completed
 
 env:
   AWS_REGION: us-east-1
@@ -20,10 +18,14 @@ env:
   FRONTEND_ECS_SERVICE: english-conversation-partner-frontend
   BACKEND_ECS_SERVICE: english-conversation-partner-backend
 
+
 jobs:
   docker:
     name: Build Push and Deploy
     runs-on: ubuntu-latest
+
+    # Terraform Apply SUCCESS ஆனா மட்டும் Docker run ஆகும்
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     defaults:
       run:
@@ -31,17 +33,15 @@ jobs:
 
     steps:
 
-      # ==========================================
-      # CHECKOUT
-      # ==========================================
-
+      # --------------------------------------------------
+      # 1. Checkout repository
+      # --------------------------------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ==========================================
-      # AWS CREDENTIALS
-      # ==========================================
-
+      # --------------------------------------------------
+      # 2. Configure AWS
+      # --------------------------------------------------
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -49,30 +49,27 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # ==========================================
-      # ECR LOGIN
-      # ==========================================
-
+      # --------------------------------------------------
+      # 3. Login to ECR
+      # --------------------------------------------------
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # ==========================================
-      # FRONTEND BUILD
-      # ==========================================
-
-      - name: Build frontend Docker image
+      # --------------------------------------------------
+      # 4. Build Frontend Docker Image
+      # --------------------------------------------------
+      - name: Build frontend image
         run: |
           docker build \
             -t ${{ steps.login-ecr.outputs.registry }}/${{ env.FRONTEND_ECR_REPOSITORY }}:${{ github.sha }} \
             -t ${{ steps.login-ecr.outputs.registry }}/${{ env.FRONTEND_ECR_REPOSITORY }}:latest \
             ./frontend
 
-      # ==========================================
-      # FRONTEND PUSH
-      # ==========================================
-
-      - name: Push frontend Docker image
+      # --------------------------------------------------
+      # 5. Push Frontend Image
+      # --------------------------------------------------
+      - name: Push frontend image
         run: |
           docker push \
             ${{ steps.login-ecr.outputs.registry }}/${{ env.FRONTEND_ECR_REPOSITORY }}:${{ github.sha }}
@@ -80,22 +77,20 @@ jobs:
           docker push \
             ${{ steps.login-ecr.outputs.registry }}/${{ env.FRONTEND_ECR_REPOSITORY }}:latest
 
-      # ==========================================
-      # BACKEND BUILD
-      # ==========================================
-
-      - name: Build backend Docker image
+      # --------------------------------------------------
+      # 6. Build Backend Docker Image
+      # --------------------------------------------------
+      - name: Build backend image
         run: |
           docker build \
             -t ${{ steps.login-ecr.outputs.registry }}/${{ env.BACKEND_ECR_REPOSITORY }}:${{ github.sha }} \
             -t ${{ steps.login-ecr.outputs.registry }}/${{ env.BACKEND_ECR_REPOSITORY }}:latest \
             ./backend
 
-      # ==========================================
-      # BACKEND PUSH
-      # ==========================================
-
-      - name: Push backend Docker image
+      # --------------------------------------------------
+      # 7. Push Backend Image
+      # --------------------------------------------------
+      - name: Push backend image
         run: |
           docker push \
             ${{ steps.login-ecr.outputs.registry }}/${{ env.BACKEND_ECR_REPOSITORY }}:${{ github.sha }}
@@ -103,10 +98,9 @@ jobs:
           docker push \
             ${{ steps.login-ecr.outputs.registry }}/${{ env.BACKEND_ECR_REPOSITORY }}:latest
 
-      # ==========================================
-      # FRONTEND ECS DEPLOY
-      # ==========================================
-
+      # --------------------------------------------------
+      # 8. Deploy Frontend ECS
+      # --------------------------------------------------
       - name: Deploy frontend ECS service
         run: |
           aws ecs update-service \
@@ -114,10 +108,9 @@ jobs:
             --service "${{ env.FRONTEND_ECS_SERVICE }}" \
             --force-new-deployment
 
-      # ==========================================
-      # BACKEND ECS DEPLOY
-      # ==========================================
-
+      # --------------------------------------------------
+      # 9. Deploy Backend ECS
+      # --------------------------------------------------
       - name: Deploy backend ECS service
         run: |
           aws ecs update-service \
@@ -125,37 +118,36 @@ jobs:
             --service "${{ env.BACKEND_ECS_SERVICE }}" \
             --force-new-deployment
 
-      # ==========================================
-      # WAIT FRONTEND
-      # ==========================================
-
+      # --------------------------------------------------
+      # 10. Wait Frontend Stable
+      # --------------------------------------------------
       - name: Wait for frontend service
         run: |
           aws ecs wait services-stable \
             --cluster "${{ env.ECS_CLUSTER }}" \
             --services "${{ env.FRONTEND_ECS_SERVICE }}"
 
-      # ==========================================
-      # WAIT BACKEND
-      # ==========================================
-
+      # --------------------------------------------------
+      # 11. Wait Backend Stable
+      # --------------------------------------------------
       - name: Wait for backend service
         run: |
           aws ecs wait services-stable \
             --cluster "${{ env.ECS_CLUSTER }}" \
             --services "${{ env.BACKEND_ECS_SERVICE }}"
 
-      # ==========================================
-      # DEPLOYMENT SUCCESS
-      # ==========================================
-
+      # --------------------------------------------------
+      # 12. Deployment Complete
+      # --------------------------------------------------
       - name: Deployment complete
         run: |
           echo "=========================================="
           echo " English Conversation Partner"
           echo "=========================================="
-          echo "Frontend image : ${{ github.sha }}"
-          echo "Backend image  : ${{ github.sha }}"
-          echo "ECS cluster    : ${{ env.ECS_CLUSTER }}"
-          echo "Deployment     : SUCCESS"
+          echo "Terraform Apply : SUCCESS"
+          echo "Frontend image  : ${{ github.sha }}"
+          echo "Backend image   : ${{ github.sha }}"
+          echo "ECS cluster     : ${{ env.ECS_CLUSTER }}"
+          echo "Deployment      : SUCCESS"
           echo "=========================================="
+```
