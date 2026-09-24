@@ -420,7 +420,8 @@ Analyze and respond in the required JSON schema.
           if (geminiResponse && geminiResponse.text) {
             break; // Success
           }
-        } catch (_modelErr) {
+        } catch (modelErr: any) {
+          console.warn(`[Gemini API] Model ${modelName} failed or unavailable:`, modelErr?.message || modelErr);
           // If a model is temporarily under high demand, seamlessly try the next model
           await new Promise(resolve => setTimeout(resolve, 80));
         }
@@ -429,19 +430,11 @@ Analyze and respond in the required JSON schema.
       if (geminiResponse && geminiResponse.text) {
         const parsed = JSON.parse(geminiResponse.text || '{}');
 
-        // Record to mistakes bank if errors found
+        // Assign stable identifiers to corrections for vault persistence
         if (parsed.hasErrors && parsed.corrections && parsed.corrections.length > 0) {
           parsed.corrections.forEach((c: any) => {
-            mistakesBank.unshift({
-              id: 'm_' + Date.now() + Math.random().toString(36).substring(2, 6),
-              ...c,
-              betterFraming: parsed.betterFraming,
-              timestamp: Date.now(),
-              reviewed: false
-            });
+            c.id = c.id || 'corr_' + Date.now() + Math.random().toString(36).substring(2, 7);
           });
-          if (mistakesBank.length > 150) mistakesBank = mistakesBank.slice(0, 150);
-          saveJSON(MISTAKES_FILE, mistakesBank);
         }
 
         // Record conversation turn
@@ -472,27 +465,22 @@ Analyze and respond in the required JSON schema.
           }
         });
       }
-    } catch (_err: any) {
+    } catch (err: any) {
+      console.warn('[Gemini AI] Outer error encountered:', err?.message || err);
       // Seamlessly fall through to heuristic engine
     }
+  } else {
+    console.info('[TalkCraft] No GEMINI_API_KEY detected in environment. Using Smart Dynamic Engine.');
   }
 
   // Graceful, intelligent rule-based dynamic engine (Never repeats static text)
   const fallbackResult = generateHeuristicFeedback(message, persona, history);
 
-  // Record to mistakes bank if errors detected locally
+  // Assign stable identifiers to corrections for vault persistence
   if (fallbackResult.grammarAnalysis.hasErrors && fallbackResult.grammarAnalysis.corrections.length > 0) {
     fallbackResult.grammarAnalysis.corrections.forEach((c: any) => {
-      mistakesBank.unshift({
-        id: 'm_' + Date.now() + Math.random().toString(36).substring(2, 6),
-        ...c,
-        betterFraming: fallbackResult.grammarAnalysis.betterFraming,
-        timestamp: Date.now(),
-        reviewed: false
-      });
+      c.id = c.id || 'corr_' + Date.now() + Math.random().toString(36).substring(2, 7);
     });
-    if (mistakesBank.length > 150) mistakesBank = mistakesBank.slice(0, 150);
-    saveJSON(MISTAKES_FILE, mistakesBank);
   }
 
   // Record conversation turn
@@ -1028,12 +1016,61 @@ function generateHeuristicFeedback(userText: string, persona: string, history: a
   };
 }
 
-// API: Get Mistakes Bank
+// API: Get Mistakes Bank (Vault)
 app.get('/api/mistakes', (req, res) => {
   res.json({ mistakes: mistakesBank });
 });
 
-// API: Clear Mistakes
+// API: Save / Persist specific grammar rule or mistake to Vault
+app.post('/api/mistakes', (req, res) => {
+  try {
+    const { item, betterFraming } = req.body;
+    if (!item || !item.original || !item.corrected) {
+      return res.status(400).json({ error: 'Invalid grammar rule item' });
+    }
+
+    // Check if already in vault
+    const existingIndex = mistakesBank.findIndex(m => 
+      (item.id && m.id === item.id) ||
+      (m.original.trim().toLowerCase() === item.original.trim().toLowerCase() &&
+       m.corrected.trim().toLowerCase() === item.corrected.trim().toLowerCase())
+    );
+
+    let savedItem;
+    if (existingIndex >= 0) {
+      savedItem = mistakesBank[existingIndex];
+    } else {
+      savedItem = {
+        id: item.id || 'm_' + Date.now() + Math.random().toString(36).substring(2, 6),
+        original: item.original.trim(),
+        corrected: item.corrected.trim(),
+        errorType: item.errorType || 'word_choice',
+        explanation: item.explanation || '',
+        tamilExplanation: item.tamilExplanation || '',
+        betterFraming: item.betterFraming || betterFraming,
+        timestamp: Date.now(),
+        reviewed: false
+      };
+      mistakesBank.unshift(savedItem);
+      if (mistakesBank.length > 200) mistakesBank = mistakesBank.slice(0, 200);
+      saveJSON(MISTAKES_FILE, mistakesBank);
+    }
+
+    return res.json({ success: true, item: savedItem, mistakes: mistakesBank });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to persist rule to vault', details: err?.message });
+  }
+});
+
+// API: Delete a single mistake from Vault
+app.delete('/api/mistakes/:id', (req, res) => {
+  const { id } = req.params;
+  mistakesBank = mistakesBank.filter(m => m.id !== id);
+  saveJSON(MISTAKES_FILE, mistakesBank);
+  res.json({ success: true, mistakes: mistakesBank });
+});
+
+// API: Clear All Mistakes in Vault
 app.delete('/api/mistakes', (req, res) => {
   mistakesBank = [];
   saveJSON(MISTAKES_FILE, mistakesBank);

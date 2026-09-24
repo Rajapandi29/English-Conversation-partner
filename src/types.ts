@@ -13,12 +13,15 @@ export interface Persona {
 }
 
 export interface CorrectionItem {
-  id: string;
+  id?: string;
   original: string;
   corrected: string;
-  errorType: 'tense' | 'preposition' | 'article' | 'subject_verb_agreement' | 'spelling' | 'word_choice' | 'sentence_framing';
+  errorType: 'tense' | 'preposition' | 'article' | 'subject_verb_agreement' | 'spelling' | 'word_choice' | 'sentence_framing' | string;
   explanation: string;
   tamilExplanation: string;
+  betterFraming?: BetterFraming;
+  timestamp?: number;
+  savedToVault?: boolean;
 }
 
 export interface BetterFraming {

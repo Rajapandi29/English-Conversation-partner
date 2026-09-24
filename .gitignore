@@ -40,3 +40,6 @@ dist/
 *.njsproj
 *.sln
 *.sw?
+.terraform
+.modules
+.terraform.lock.hcl

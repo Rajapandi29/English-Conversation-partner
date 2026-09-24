@@ -75,13 +75,16 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span>Gemini AI Online</span>
             </div>
           ) : (
-            <div 
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] font-medium"
-              title="Running in Smart Local Dynamic Mode. To enable live Google Gemini AI, add GEMINI_API_KEY in your .env file."
+            <button 
+              type="button"
+              onClick={onOpenExport}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 hover:border-amber-400/40 text-amber-300 text-[11px] font-medium transition-all cursor-pointer hover:scale-105 active:scale-95"
+              title="Running in Smart Local Dynamic Mode. Click to view how to add GEMINI_API_KEY to your local .env file."
             >
               <span className="w-2 h-2 rounded-full bg-amber-400" />
               <span>Smart Dynamic Engine</span>
-            </div>
+              <span className="text-[9px] bg-amber-400/20 px-1.5 py-0.2 rounded font-semibold text-amber-200">Local Setup</span>
+            </button>
           )}
         </div>
 

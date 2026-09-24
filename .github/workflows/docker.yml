@@ -1,0 +1,116 @@
+name: Docker Build and Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+
+env:
+  AWS_REGION: us-east-1
+
+  FRONTEND_ECR_REPOSITORY: english-conversation-partner-frontend
+  BACKEND_ECR_REPOSITORY: english-conversation-partner-backend
+
+  ECS_CLUSTER: english-conversation-partner-cluster
+  FRONTEND_ECS_SERVICE: english-conversation-partner-frontend
+  BACKEND_ECS_SERVICE: english-conversation-partner-backend
+
+jobs:
+  docker:
+    name: Build Push and Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+
+      - name: Build frontend image
+        run: |
+          docker build \
+            -t ${{ steps.login-ecr.outputs.registry }}/${{ env.FRONTEND_ECR_REPOSITORY }}:${{ github.sha }} \
+            -t ${{ steps.login-ecr.outputs.registry }}/${{ env.FRONTEND_ECR_REPOSITORY }}:latest \
+            ./frontend
+
+      - name: Push frontend image
+        run: |
+          docker push \
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.FRONTEND_ECR_REPOSITORY }}:${{ github.sha }}
+
+          docker push \
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.FRONTEND_ECR_REPOSITORY }}:latest
+
+
+      - name: Build backend image
+        run: |
+          docker build \
+            -t ${{ steps.login-ecr.outputs.registry }}/${{ env.BACKEND_ECR_REPOSITORY }}:${{ github.sha }} \
+            -t ${{ steps.login-ecr.outputs.registry }}/${{ env.BACKEND_ECR_REPOSITORY }}:latest \
+            ./backend
+
+      - name: Push backend image
+        run: |
+          docker push \
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.BACKEND_ECR_REPOSITORY }}:${{ github.sha }}
+
+          docker push \
+            ${{ steps.login-ecr.outputs.r
+
+      - name: Deploy frontend ECS service
+        run: |
+          aws ecs update-service \
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --service "${{ env.FRONTEND_ECS_SERVICE }}" \
+            --force-new-deployment
+
+
+      - name: Deploy backend ECS service
+        run: |
+          aws ecs update-service \
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --service "${{ env.BACKEND_ECS_SERVICE }}" \
+            --force-new-deployment
+
+
+      - name: Wait for frontend service
+        run: |
+          aws ecs wait services-stable \
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --services "${{ env.FRONTEND_ECS_SERVICE }}"
+
+
+      - name: Wait for backend service
+        run: |
+          aws ecs wait services-stable \
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --services "${{ env.BACKEND_ECS_SERVICE }}"
+
+
+      - name: Deployment complete
+        run: |
+          echo "=========================================="
+          echo " English Conversation Partner"
+          echo "=========================================="
+          echo "Frontend image : ${{ github.sha }}"
+          echo "Backend image  : ${{ github.sha }}"
+          echo "ECS cluster    : ${{ env.ECS_CLUSTER }}"
+          echo "Deployment     : SUCCESS"
+          echo "=========================================="

@@ -242,36 +242,49 @@ export const ExportCodeModal: React.FC<ExportCodeModalProps> = ({
         </div>
 
         {/* Quick Launch Instruction Banner */}
-        <div className="px-5 py-2.5 bg-slate-950/95 border-b border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs shrink-0">
-          <div className="flex items-center gap-2 text-slate-300">
-            <Play className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="text-slate-400 font-medium">Run in your terminal:</span>
-            <code className="bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800 font-mono text-emerald-300 font-bold flex items-center gap-2">
-              {packageType === 'working_app' ? 'npm install && npm run dev' : 'docker compose up --build'}
-              <button 
-                onClick={() => handleCopyCmd(packageType === 'working_app' ? 'npm install && npm run dev' : 'docker compose up --build')}
-                className="text-slate-400 hover:text-white transition-colors"
-                title="Copy command"
-              >
-                {copiedCmd ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-              </button>
-            </code>
+        <div className="px-5 py-2.5 bg-slate-950/95 border-b border-slate-800/80 flex flex-col gap-2 text-xs shrink-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-slate-300">
+              <Play className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="text-slate-400 font-medium">Run in your terminal:</span>
+              <code className="bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800 font-mono text-emerald-300 font-bold flex items-center gap-2">
+                {packageType === 'working_app' ? 'npm install && npm run dev' : 'docker compose up --build'}
+                <button 
+                  onClick={() => handleCopyCmd(packageType === 'working_app' ? 'npm install && npm run dev' : 'docker compose up --build')}
+                  className="text-slate-400 hover:text-white transition-colors"
+                  title="Copy command"
+                >
+                  {copiedCmd ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+              </code>
+            </div>
+
+            <div className="flex items-center gap-2 text-slate-400 text-[11px]">
+              {packageType === 'working_app' ? (
+                <>
+                  <span className="text-emerald-400 font-semibold">• Local Port 3000</span>
+                  <span>• AI Voice Visualizer Included</span>
+                  <span>• Tamil Explanations Built-in</span>
+                </>
+              ) : (
+                <>
+                  <span>• Next.js App Router (Port 3000)</span>
+                  <span>• FastAPI REST (Port 8000)</span>
+                  <span>• PostgreSQL 16 (Port 5432)</span>
+                </>
+              )}
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 text-slate-400 text-[11px]">
-            {packageType === 'working_app' ? (
-              <>
-                <span className="text-emerald-400 font-semibold">• Local Port 3000</span>
-                <span>• AI Voice Visualizer Included</span>
-                <span>• Tamil Explanations Built-in</span>
-              </>
-            ) : (
-              <>
-                <span>• Next.js App Router (Port 3000)</span>
-                <span>• FastAPI REST (Port 8000)</span>
-                <span>• PostgreSQL 16 (Port 5432)</span>
-              </>
-            )}
+          {/* Gemini API Key notice for Local Laptop */}
+          <div className="p-2.5 rounded-xl bg-amber-950/30 border border-amber-500/25 flex items-start gap-2.5 text-amber-200/90 text-[11px] leading-relaxed">
+            <Sparkles className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-bold text-amber-300">Local-la Gemini AI Online வர என்ன செய்ய வேண்டும்? (Enable Gemini AI locally):</span>
+              <p className="text-slate-300 mt-0.5">
+                Local-la project root folder-ல் உள்ள <code className="text-emerald-400 font-mono font-bold bg-slate-900 px-1 py-0.5 rounded">.env</code> file-ல் உங்கள் <code className="text-amber-300 font-mono font-bold bg-slate-900 px-1 py-0.5 rounded">GEMINI_API_KEY="AIzaSy..."</code> கொடுத்துவிட்டு dev server-ஐ restart (<code className="text-indigo-300 font-mono bg-slate-900 px-1 py-0.5 rounded">npm run dev</code>) செய்தால், தானாகவே <strong>Gemini AI Online</strong> mode இயங்கும்! Key இல்லாதபோது செயலி பாதுகாப்பாக <strong>Smart Dynamic Engine</strong> mode-ல் இயங்குகிறது.
+              </p>
+            </div>
           </div>
         </div>
 

@@ -10,7 +10,7 @@ import {
   HelpCircle,
   PartyPopper
 } from 'lucide-react';
-import { ChatMessage, Persona } from '../types';
+import { ChatMessage, Persona, CorrectionItem } from '../types';
 import { GrammarCard } from './GrammarCard';
 import { VoiceVisualizer } from './VoiceVisualizer';
 import { triggerGrammar100Confetti } from '../utils/confetti';
@@ -27,6 +27,9 @@ interface ChatAreaProps {
   isListening?: boolean;
   isAiSpeaking?: boolean;
   onStopSpeech?: () => void;
+  onSaveToVault?: (item: CorrectionItem) => void;
+  isItemSaved?: (item: CorrectionItem) => boolean;
+  onPracticeSentence?: (text: string) => void;
 }
 
 export const ChatArea: React.FC<ChatAreaProps> = ({
@@ -40,7 +43,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   selectedMessageId,
   isListening = false,
   isAiSpeaking = false,
-  onStopSpeech
+  onStopSpeech,
+  onSaveToVault,
+  isItemSaved,
+  onPracticeSentence
 }) => {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -203,7 +209,13 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 {/* Expanded card view if selected */}
                 {selectedMessageId === message.id && (
                   <div className="mt-2 animate-fadeIn">
-                    <GrammarCard analysis={message.grammarAnalysis} showTamil={showTamil} />
+                    <GrammarCard 
+                      analysis={message.grammarAnalysis} 
+                      showTamil={showTamil} 
+                      onPracticeSentence={onPracticeSentence}
+                      onSaveToVault={onSaveToVault}
+                      isItemSaved={isItemSaved}
+                    />
                   </div>
                 )}
               </div>
