@@ -7,6 +7,8 @@ on:
 
   workflow_dispatch:
 
+permissions:
+  contents: read
 
 env:
   AWS_REGION: us-east-1
@@ -23,12 +25,22 @@ jobs:
     name: Build Push and Deploy
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: talk-ai
+
     steps:
 
+      # ==========================================
+      # CHECKOUT
+      # ==========================================
 
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # ==========================================
+      # AWS CREDENTIALS
+      # ==========================================
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -37,20 +49,30 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      # ==========================================
+      # ECR LOGIN
+      # ==========================================
 
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      # ==========================================
+      # FRONTEND BUILD
+      # ==========================================
 
-      - name: Build frontend image
+      - name: Build frontend Docker image
         run: |
           docker build \
             -t ${{ steps.login-ecr.outputs.registry }}/${{ env.FRONTEND_ECR_REPOSITORY }}:${{ github.sha }} \
             -t ${{ steps.login-ecr.outputs.registry }}/${{ env.FRONTEND_ECR_REPOSITORY }}:latest \
             ./frontend
 
-      - name: Push frontend image
+      # ==========================================
+      # FRONTEND PUSH
+      # ==========================================
+
+      - name: Push frontend Docker image
         run: |
           docker push \
             ${{ steps.login-ecr.outputs.registry }}/${{ env.FRONTEND_ECR_REPOSITORY }}:${{ github.sha }}
@@ -58,21 +80,32 @@ jobs:
           docker push \
             ${{ steps.login-ecr.outputs.registry }}/${{ env.FRONTEND_ECR_REPOSITORY }}:latest
 
+      # ==========================================
+      # BACKEND BUILD
+      # ==========================================
 
-      - name: Build backend image
+      - name: Build backend Docker image
         run: |
           docker build \
             -t ${{ steps.login-ecr.outputs.registry }}/${{ env.BACKEND_ECR_REPOSITORY }}:${{ github.sha }} \
             -t ${{ steps.login-ecr.outputs.registry }}/${{ env.BACKEND_ECR_REPOSITORY }}:latest \
             ./backend
 
-      - name: Push backend image
+      # ==========================================
+      # BACKEND PUSH
+      # ==========================================
+
+      - name: Push backend Docker image
         run: |
           docker push \
             ${{ steps.login-ecr.outputs.registry }}/${{ env.BACKEND_ECR_REPOSITORY }}:${{ github.sha }}
 
           docker push \
-            ${{ steps.login-ecr.outputs.r
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.BACKEND_ECR_REPOSITORY }}:latest
+
+      # ==========================================
+      # FRONTEND ECS DEPLOY
+      # ==========================================
 
       - name: Deploy frontend ECS service
         run: |
@@ -81,6 +114,9 @@ jobs:
             --service "${{ env.FRONTEND_ECS_SERVICE }}" \
             --force-new-deployment
 
+      # ==========================================
+      # BACKEND ECS DEPLOY
+      # ==========================================
 
       - name: Deploy backend ECS service
         run: |
@@ -89,6 +125,9 @@ jobs:
             --service "${{ env.BACKEND_ECS_SERVICE }}" \
             --force-new-deployment
 
+      # ==========================================
+      # WAIT FRONTEND
+      # ==========================================
 
       - name: Wait for frontend service
         run: |
@@ -96,6 +135,9 @@ jobs:
             --cluster "${{ env.ECS_CLUSTER }}" \
             --services "${{ env.FRONTEND_ECS_SERVICE }}"
 
+      # ==========================================
+      # WAIT BACKEND
+      # ==========================================
 
       - name: Wait for backend service
         run: |
@@ -103,6 +145,9 @@ jobs:
             --cluster "${{ env.ECS_CLUSTER }}" \
             --services "${{ env.BACKEND_ECS_SERVICE }}"
 
+      # ==========================================
+      # DEPLOYMENT SUCCESS
+      # ==========================================
 
       - name: Deployment complete
         run: |
